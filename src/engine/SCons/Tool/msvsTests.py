@@ -597,7 +597,7 @@ class msvsTestCase(unittest.TestCase):
         # FS doesn't like the cwd to be something other than its root.
         os.chdir(self.test.workpath(""))
         self.fs = SCons.Node.FS.FS()
-        self.subdir = self.fs.Dir('subdir')
+        # self.subdir = self.fs.Dir('subdir')
 
 
     def test_get_default_version(self):
@@ -678,10 +678,10 @@ class msvsTestCase(unittest.TestCase):
         list_cppdefines = [['_A', '_B', 'C'], ['_B', '_C_'], ['D'], []]
 
 
-        # d1 = self.fs.Dir('subdir', create=False)
+        d1 = self.fs.Dir('subdir')
 
         list_cpppaths = [[r'C:\test1'], [r'C:\test1;C:\test2'],
-                         [self.subdir], []]
+                         [d1], []]
 
         
         def TestParamsFromList(test_variant, test_list):
