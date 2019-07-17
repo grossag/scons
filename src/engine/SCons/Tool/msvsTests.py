@@ -36,6 +36,8 @@ from SCons.Tool.msvs import *
 from SCons.Tool.MSCommon.vs import SupportedVSList
 import SCons.Util
 import SCons.Warnings
+import SCons.Node.FS
+
 
 from SCons.Tool.MSCommon.common import debug
 
@@ -420,11 +422,6 @@ class DummyEnv(object):
             return self.dict[name]
         else:
             return value
-
-    def Dir(self, name):
-        # Depend upon SCons.Script.Dir so we can create a Directory object
-        # that doesn't actually exist on disk without problems or side effects.
-        return SCons.Script.Dir(name)
         
 
 class RegKey(object):
@@ -596,6 +593,13 @@ class msvsTestCase(unittest.TestCase):
         from SCons.Tool.MSCommon.vs import reset_installed_visual_studios
         reset_installed_visual_studios()
 
+        self.test = TestCmd.TestCmd(workdir='')
+        # FS doesn't like the cwd to be something other than its root.
+        os.chdir(self.test.workpath(""))
+        self.fs = SCons.Node.FS.FS()
+        self.subdir = self.fs.Dir('subdir')
+
+
     def test_get_default_version(self):
         """Test retrieval of the default visual studio version"""
 
@@ -672,9 +676,14 @@ class msvsTestCase(unittest.TestCase):
                         'debug=True target_arch=x64', 
                         'debug=False target_arch=x64']
         list_cppdefines = [['_A', '_B', 'C'], ['_B', '_C_'], ['D'], []]
-        list_cpppaths = [[r'C:\test1'], [r'C:\test1;C:\test2'],
-                         [DummyEnv().Dir('subdir')], []]
 
+
+        # d1 = self.fs.Dir('subdir', create=False)
+
+        list_cpppaths = [[r'C:\test1'], [r'C:\test1;C:\test2'],
+                         [self.subdir], []]
+
+        
         def TestParamsFromList(test_variant, test_list):
             """
             Generates test data based on the parameters passed in.
@@ -755,6 +764,9 @@ class msvsTestCase(unittest.TestCase):
             class _DummyEnv(DummyEnv):
                 def subst(self, string, *args, **kwargs):
                     return string
+
+                def Dir(env, name):
+                    return self.fs.Dir(name)
             
             env = _DummyEnv(param_dict)
             env['MSVSSCONSCRIPT'] = ''
