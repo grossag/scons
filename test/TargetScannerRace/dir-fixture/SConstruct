@@ -1,0 +1,105 @@
+import SCons.Node
+import SCons.Scanner
+
+import atexit
+import math
+import random
+import sys
+import time
+
+target_count = 10
+source_scan_count = 0
+target_scan_count = 0
+deps_count = 10
+
+sources = ['source%d' % i for i in range(deps_count)]
+source_deps = ['sourcedep%d' % i for i in range(deps_count)]
+target_deps = ['targetdep%d' % i for i in range(deps_count)]
+
+def source_scan(node, env, scanpaths, arg):
+    return source_deps
+
+def target_scan(node, env, scanpaths, arg):
+    global target_scan_count
+    target_scan_count = target_scan_count + 1
+
+    for bc in node.blocking_children:
+        #if bc.get_state() == SCons.Node.executing:
+        if hasattr(bc, 'prepared') and bc.prepared:
+            implicit_before_sleep = node.implicit.copy()
+            print('sleeping (implicits=%s)' % [str(i) for i in node.implicit])
+            time.sleep(3)
+            print('done sleeping')
+            if node.implicit != implicit_before_sleep:
+                raise Exception('implicit changed from underneath us during a scan of %s!' % node.abspath)
+            raise Exception('Very unexpectedly, implicits didnt change. node=%s, child=%s, child.state=%d, before=%s, after=%s' %
+                            (str(node), str(bc), bc.get_state(), [str(c) for c in implicit_before_sleep], [str(c) for c in node.implicit]))
+            break
+    #d = [target_deps[:target_scan_count]]
+    #print('giving target deps of %s' % [str(q) for q in d])
+    #return d
+    return target_deps
+
+def scanner(name, function, ext):
+    return Scanner(
+        name=name,
+        function=function,
+        argument=None,
+        skeys=[ext])
+
+source_scanner = scanner('sscan', source_scan, '.py')
+target_scanner = scanner('tscan', target_scan, '.target')
+
+build = Builder(action='$PYTHON -B $SOURCES[0] $TARGETS',
+                source_scanner=source_scanner,
+                target_scanner=target_scanner)
+generate = Builder(action='$PYTHON -B $SOURCE $TARGETS')
+env = Environment(tools=[], BUILDERS={'Build': build, 'Generate': generate},
+                  PYTHON=sys.executable)
+
+empties = []
+for i in range(target_count):
+    empty_py = env.Build(['empty%s%d.target' % (c, i) for c in ['a', 'b', 'c', 'd']],
+                         ['empty.py'] + sources[:i+1])
+    empties.extend(empty_py)
+
+for dep in sources + source_deps + target_deps:
+    env.AlwaysBuild(env.Generate(dep, 'generate.py'))
+
+scan_count = 0
+
+def node_custom_scan(self):
+    global scan_count
+
+    if self.implicit is not None:
+        return
+
+    ret = self._old_scan()
+
+    if self in empties:
+        scan_count = scan_count + 1
+        implicits = [str(c) for c in self.implicit]
+        expected_implicits = source_deps + [sys.executable] + target_deps
+        if implicits != expected_implicits:
+            raise Exception('Expected implicits %s, got %s' %
+                            (expected_implicits, implicits))
+
+    return ret
+
+#SCons.Node.Node._old_scan = SCons.Node.Node.scan
+#SCons.Node.Node.scan = node_custom_scan.__get__(None, SCons.Node.Node)
+
+def validate_implicits():
+    for empty_py in empties:
+        implicit_raw = empty_py.implicit
+        implicits = [str(c) for c in implicit_raw] if implicit_raw else []
+        expected_implicits = source_deps + [sys.executable] + target_deps
+        if implicits != expected_implicits:
+            raise Exception('Expected implicits %s, got %s' %
+                            (expected_implicits, implicits))
+
+#atexit.register(validate_implicits)
+def end():
+    raise Exception('Scanned %d targets a total of %d times' %
+                    (len(empties), target_scan_count))
+#atexit.register(end)
