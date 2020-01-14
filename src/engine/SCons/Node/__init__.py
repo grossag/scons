@@ -774,6 +774,7 @@ class Node(object, with_metaclass(NoSlotsPyPy)):
 
         # Clear the implicit dependency caches of any Nodes
         # waiting for this Node to be built.
+        print('Node %s is built. waiting_parents=%s' % (self.abspath, self.waiting_parents))
         for parent in self.waiting_parents:
             parent.implicit = None
 

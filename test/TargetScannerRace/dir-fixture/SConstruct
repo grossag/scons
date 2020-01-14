@@ -3,6 +3,7 @@ import SCons.Scanner
 
 import atexit
 import math
+import os
 import random
 import sys
 import time
@@ -16,29 +17,40 @@ sources = ['source%d' % i for i in range(deps_count)]
 source_deps = ['sourcedep%d' % i for i in range(deps_count)]
 target_deps = ['targetdep%d' % i for i in range(deps_count)]
 
+#last_source_scan_results = []
+last_target_scan_results = []
+
 def source_scan(node, env, scanpaths, arg):
     return source_deps
 
 def target_scan(node, env, scanpaths, arg):
-    global target_scan_count
-    target_scan_count = target_scan_count + 1
+    global target_scan_count, last_target_scan_results
+    target_scan_count = target_scan_count + 10
 
-    for bc in node.blocking_children:
-        #if bc.get_state() == SCons.Node.executing:
-        if hasattr(bc, 'prepared') and bc.prepared:
-            implicit_before_sleep = node.implicit.copy()
-            print('sleeping (implicits=%s)' % [str(i) for i in node.implicit])
-            time.sleep(3)
-            print('done sleeping')
-            if node.implicit != implicit_before_sleep:
-                raise Exception('implicit changed from underneath us during a scan of %s!' % node.abspath)
-            raise Exception('Very unexpectedly, implicits didnt change. node=%s, child=%s, child.state=%d, before=%s, after=%s' %
-                            (str(node), str(bc), bc.get_state(), [str(c) for c in implicit_before_sleep], [str(c) for c in node.implicit]))
+    for c in last_target_scan_results:
+        if c.waiting_parents and node in c.waiting_parents and c.get_state() == SCons.Node.executing and not os.path.isfile(c.abspath):
+            print('sleeping, waiting for child %s' % c.abspath)
+            implicits = node.implicit.copy()
+            time.sleep(2)
+            if os.path.isfile(c.abspath):
+                updated_implicits = node.implicit
+                if implicits == updated_implicits:
+                    raise Exception('They matched but the action to write %s ran! c.waiting_parents=%s, c.get_state()=%d' % (c.abspath, c.waiting_parents, c.get_state()))
+                else:
+                    raise Exception('Implicits were changed from underneath us. '
+                                    'They were %s and now are %s' %
+                                    (expected_implicits, implicits))
+                break
+
+    deps = []
+    for d in target_deps:
+        f = env.fs.File(d)
+        deps.append(f)
+        if not os.path.exists(f.abspath):
             break
-    #d = [target_deps[:target_scan_count]]
-    #print('giving target deps of %s' % [str(q) for q in d])
-    #return d
-    return target_deps
+
+    last_target_scan_results = deps
+    return deps
 
 def scanner(name, function, ext):
     return Scanner(
