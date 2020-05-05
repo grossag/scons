@@ -1,0 +1,17 @@
+import sys
+import SCons.Scanner
+
+suffix = '.py'
+
+def scan(node, env, _):
+    if not node.name.endswith(suffix):
+        raise Exception('Unexpectedly scanned %s' % node)
+    return []
+
+env = Environment(tools=[])
+scanner = SCons.Scanner.Scanner(function=scan, skeys=[suffix])
+o = env.Command('out.bin',
+                ['helper.py', 'helper.h'],
+                '$PYTHON ${SOURCES[0]} ${SOURCES[1:]',
+                PYTHON=sys.executable,
+                source_scanner=scanner)
