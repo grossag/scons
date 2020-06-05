@@ -1,0 +1,34 @@
+from SCons.Scanner import ClassicCPP
+
+headers = ['h%d.h' % i for i in range(10)]
+sources = ['s%d.c' % i for i in range(3500)]
+
+header_contents = '\n'.join(['// some comment' for i in range(10000)])
+for header in headers:
+    with open(header, 'w') as f:
+        f.write(header_contents)
+
+source_contents = '\n'.join(
+    ['#include "%s"' % header for header in headers] + 
+    ['// some comment' for i in range(1000)] +
+    ['']
+)
+wrote_main = False
+for source in sources:
+    with open(source, 'w') as f:
+        f.write(source_contents)
+
+        if not wrote_main:
+            f.write('int main() { return 0; }\n')
+            wrote_main = True
+
+def catfunc(target, source, env):
+    """Concatenate N sources into a 1 target."""
+    with open(target[0].abspath, 'w') as wfile:
+        for s in source:
+            with open(s.abspath, 'r') as rfile:
+                wfile.write(rfile.read())
+
+env = Environment()
+combinedFile = env.Command('combined.c', sources, catfunc)
+program = env.Program('test', source=[combinedFile], source_scanner=ClassicCPP)

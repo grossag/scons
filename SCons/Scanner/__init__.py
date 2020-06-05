@@ -358,7 +358,6 @@ class Classic(Current):
         return self.cre.findall(node.get_text_contents())
 
     def scan(self, node, path=()):
-
         # cache the includes list in node so we only scan it once:
         if node.includes is not None:
             includes = node.includes
