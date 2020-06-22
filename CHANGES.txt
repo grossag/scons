@@ -82,6 +82,10 @@ RELEASE  VERSION/DATE TO BE FILLED IN LATER
       when the value can't be converted to a string or if having a name is otherwise desirable.
     - Fixed usage of abspath and path for RootDir objects on Windows. Previously
       env.fs.Dir("T:").abspath would return "T:\T:" and now it correctly returns "T:".
+    - Added support for a new command-line parameter "--hash-format" to override the default
+      hash format that SCons uses. It can also be set via SetOption('hash_format'). Supported
+      values include md5, sha1, and sha256, but you can also use any other algorithm that is
+      offered by your Python interpreter's hashlib package.
 
   From Iosif Kurazs:
     - Added a new flag called "linedraw" for the command line argument  "--tree"
