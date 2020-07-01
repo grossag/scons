@@ -715,7 +715,7 @@ def Parser(version):
     op.add_option('--hash-format',
                   dest='hash_format',
                   action='store',
-                  help='Hash format (e.g. md5, sha1, or sha256).')
+                  help='Hash format (e.g. MD5, SHA1, or SHA256).')
 
     op.add_option('-i', '--ignore-errors',
                   dest='ignore_errors', default=False,

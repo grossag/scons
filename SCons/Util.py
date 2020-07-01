@@ -1498,6 +1498,7 @@ def set_hash_format(hash_format):
                 pass
         else:
             # This is not expected to happen in practice.
+            _hash_function = None
             raise Exception(
                 'Your Python interpreter does not have MD5, SHA1, or SHA256. '
                 'SCons requires at least one.')
@@ -1574,7 +1575,7 @@ def hash_collect(signatures, hash_format=None):
 
     :param signatures: a list of signatures
     :param hash_format: Specify to override default hash format
-    :return: - the aggregate signature
+    :return: the aggregate signature
     """
     if len(signatures) == 1:
         return signatures[0]
@@ -1586,21 +1587,21 @@ def MD5signature(s):
     """
     Deprecated. Use hash_signature instead.
     """
-    return hash_signature(s)
+    return hash_signature(s, 'md5')
 
 
 def MD5filesignature(fname, chunksize=65536):
     """
     Deprecated. Use hash_file_signature instead.
     """
-    return hash_file_signature(fname, chunksize)
+    return hash_file_signature(fname, chunksize, 'md5')
 
 
 def MD5collect(signatures):
     """
     Deprecated. Use hash_collect instead.
     """
-    return hash_collect(signatures)
+    return hash_collect(signatures, 'md5')
 
 
 def silent_intern(x):

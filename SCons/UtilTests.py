@@ -790,7 +790,7 @@ class HashTestCase(unittest.TestCase):
             assert expected[1] == hash_collect(s[0:2], hash_format=algorithm)
             assert expected[2] == hash_collect(s, hash_format=algorithm)
 
-    def test_MD5signature(self):
+    def test_signature(self):
         """Test generating a signature"""
         for algorithm, expected in {
             'md5': ('698d51a19d8a121ce581499d7b701668',
