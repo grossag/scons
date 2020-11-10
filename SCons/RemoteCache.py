@@ -88,15 +88,6 @@ try:
 except ImportError as e:
     urllib3_exception = e
 
-stats_metadata_requests = 0
-stats_metadata_total_ms = 0
-stats_download_requests = 0
-stats_download_total_ms = 0
-stats_download_total_bytes = 0
-stats_upload_requests = 0
-stats_upload_total_ms = 0
-stats_upload_total_bytes = 0
-
 
 def raise_if_not_supported():
     # Verify that all required packages are present.
@@ -105,36 +96,6 @@ def raise_if_not_supported():
             'Remote caching was requested but it is not supported in this '
             'deployment. urllib3 is required but missing: %s' %
             urllib3_exception)
-
-
-def print_operation_stats(operation, requests, bytes, ms):
-    """Prints statistics about the specified operation."""
-    if requests > 0:
-        mb = float(bytes) / 1048576
-        seconds = float(ms) / 1000
-        SCons.Util.display('RemoteCache %s stats: %d requests on %d MB took '
-                           '%d ms. Average %2.2f ms per MB and %2.2f MB per '
-                           'second.' %
-                           (operation, requests, mb, ms,
-                            0 if mb == 0 else float(ms) / mb,
-                            0 if seconds == 0 else mb / seconds))
-
-
-def print_stats():
-    """
-    atexit handler to print the statistics that were collected during a build.
-    """
-    if stats_metadata_requests > 0:
-        SCons.Util.display('RemoteCache task metadata stats: %d ms average '
-                           'RTT on %d requests.' %
-                           (stats_metadata_total_ms / stats_metadata_requests,
-                            stats_metadata_requests))
-
-    # The other three stats all use the same log format.
-    print_operation_stats('download', stats_download_requests,
-                          stats_download_total_bytes, stats_download_total_ms)
-    print_operation_stats('upload', stats_upload_requests,
-                          stats_upload_total_bytes, stats_upload_total_ms)
 
 
 class RemoteCache(object):
@@ -165,6 +126,14 @@ class RemoteCache(object):
         'server_address',
         'server_path',
         'sessions',
+        'stats_download_requests',
+        'stats_download_total_bytes',
+        'stats_download_total_ms',
+        'stats_metadata_requests',
+        'stats_metadata_total_ms',
+        'stats_upload_requests',
+        'stats_upload_total_bytes',
+        'stats_upload_total_ms',
         'stats_lock',
         'total_failure_count',
         'transfer_request_timeout_sec'
@@ -191,26 +160,29 @@ class RemoteCache(object):
         self.fetch_response_queue = None
         self.failure_count = 0
         self.total_failure_count = 0
-        self.stats_lock = threading.Lock()
         self.cache_ok_since = 0.0
         self.reset_count = 0
         self.fetch_enabled_currently = self.fetch_enabled
         self.push_enabled_currently = self.push_enabled
         self.current_reset_backoff_multiplier = 1.0
+        self.stats_lock = threading.Lock()
+        self.stats_download_requests = 0
+        self.stats_download_total_bytes = 0
+        self.stats_download_total_ms = 0
+        self.stats_metadata_requests = 0
+        self.stats_metadata_total_ms = 0
+        self.stats_upload_requests = 0
+        self.stats_upload_total_bytes = 0
+        self.stats_upload_total_ms = 0
 
         if cache_debug == '-':
             self.debug_file = sys.stdout
-            self.log('Logging debug remote cache information to stdout')
         elif cache_debug:
             try:
                 self.debug_file = open(cache_debug, 'w')
-                self.log('Logging debug remote cache information to "%s"' %
-                         cache_debug)
             except Exception as e:
                 self.log('WARNING: Unable to open cache debug file "%s" for '
                          'write with exception: %s.' % (cache_debug, e))
-
-        atexit.register(print_stats)
 
         # This is hardcoded and expected to change if we ever change the
         # contents of _get_task_metadata_signature. That allows us to
@@ -272,9 +244,10 @@ class RemoteCache(object):
             self.server_address, maxsize=worker_count, block=True)
         self.request_executor = ThreadPoolExecutor(max_workers=worker_count)
 
-        self.log('Remote cache server is configured as %s and max connection '
-                 'count is %d.' %
-                 (self.server_address + self.server_path, worker_count))
+        if self.debug_file:
+            self._debug('Remote cache server is configured as %s and max '
+                        'connection count is %d.' %
+                        (self.server_address + self.server_path, worker_count))
 
     def _get_node_data_url(self, csig):
         """Retrieves the URL for the specified node."""
@@ -430,32 +403,25 @@ class RemoteCache(object):
         except Exception as e:
             exception = e
 
-        global stats_get_requests, stats_get_total_ms
-
-        with self.stats_lock:
-            ms = self._get_delta_ms(start)
-            if is_metadata_request:
-                global stats_metadata_requests, stats_metadata_total_ms
-                stats_metadata_requests += 1
-                stats_metadata_total_ms += ms
-            elif response is not None and self._success(response):
-                # /cas/ requests only provide good tracking data if they
-                # succeeded. Otherwise, the actual uploaded/downloaded size is
-                # unknown and would skew our averages.
-                if verb == 'GET':
-                    global stats_download_requests, stats_download_total_ms, \
-                        stats_download_total_bytes
-                    stats_download_requests += 1
-                    stats_download_total_ms += ms
-                    stats_download_total_bytes += len(response.data)
-                else:
-                    global stats_upload_requests, stats_upload_total_ms, \
-                        stats_upload_total_bytes
-                    stats_upload_requests += 1
-                    stats_upload_total_ms += ms
-                    stats_upload_total_bytes += len(kwargs['body'])
-
         if self.debug_file:
+            with self.stats_lock:
+                ms = self._get_delta_ms(start)
+                if is_metadata_request:
+                    self.stats_metadata_requests += 1
+                    self.stats_metadata_total_ms += ms
+                elif response is not None and self._success(response):
+                    # /cas/ requests only provide good tracking data if they
+                    # succeeded. Otherwise, the actual uploaded/downloaded size
+                    # is unknown and would skew our averages.
+                    if verb == 'GET':
+                        self.stats_download_requests += 1
+                        self.stats_download_total_ms += ms
+                        self.stats_download_total_bytes += len(response.data)
+                    else:
+                        self.stats_upload_requests += 1
+                        self.stats_upload_total_ms += ms
+                        self.stats_upload_total_bytes += len(kwargs['body'])
+
             ms = self._get_delta_ms(start)
             # target_path could be relative or absolute. Convert to relative.
             target_log = (('for target %s ' % self.fs.File(target_path).path)
@@ -627,7 +593,8 @@ class RemoteCache(object):
             if self._success(response):
                 try:
                     action_result = json.loads(response.data.decode('utf-8'))
-                except json.JSONDecodeError:
+                except json.JSONDecodeError as e:
+                    print(e)
                     if self.debug_file:
                         self._debug('Cache miss due to bad JSON data in the '
                                     'action cache for task with url %s, '
@@ -749,10 +716,14 @@ class RemoteCache(object):
             # async pushes could.
             start = datetime.datetime.now()
             self.executor.shutdown(wait=True)
-            # Log if the shutdown took any noticeable amount of time.
-            ms = self._get_delta_ms(start)
-            if ms > 100:
-                self.log('Shutting down RemoteCache took %d ms.' % ms)
+            if self.debug_file:
+                # Log a debug message if shutting down the network request
+                # executor took a while. This happens if there are large
+                # cache pushes at the end of the build.
+                ms = self._get_delta_ms(start)
+                if ms > 100:
+                    self._debug('Shutting down took %d ms.' % ms)
+
             self.executor = None
 
         for _, session in self.sessions.items():
@@ -855,7 +826,7 @@ class RemoteCache(object):
         Prints a debug message if --cache-debug was set.
         Caller is responsible for checking that self.debug_file is not None.
         """
-        self.debug_file.write(SCons.Util.format_msg(msg + '\n'))
+        self.debug_file.write(msg + '\n')
 
     def _debug_cache_result(self, hit, task, url):
         """
@@ -917,6 +888,57 @@ class RemoteCache(object):
                      format_container(t.implicit),
                      format_container(getattr(t, 'ignore', [])),
                      '\n\t'.join(actions)))
+
+
+    def _print_operation_stats(self, operation, requests, bytes, ms):
+        """Prints statistics about the specified operation."""
+        if requests > 0:
+            mb = float(bytes) / 1048576
+            seconds = float(ms) / 1000
+            self._debug('%s stats: %d requests on %d MB took %d ms. Average '
+                        '%2.2f ms per MB and %2.2f MB per second.' %
+                        (operation, requests, mb, ms,
+                         0 if mb == 0 else float(ms) / mb,
+                         0 if seconds == 0 else mb / seconds))
+
+
+    def log_stats(self, hit_pct, cache_count, cache_hits, cache_misses,
+                  cache_suspended, cacheable_pct, cache_skips, task_count,
+                  total_failures, reset_count):
+        """
+        Prints the statistics that were collected during a build.
+        """
+        message = (
+            '%2.1f percent cache hit rate on %d cacheable tasks with %d hits, '
+            '%d misses, %d w/cache suspended. %2.1f percent of total tasks '
+            'cacheable, due to %d/%d tasks marked not cacheable. Saw %d total '
+            'failures, %d cache restarts.' %
+            (hit_pct, cache_count, cache_hits, cache_misses,
+             cache_suspended,
+             cacheable_pct, cache_skips, task_count,
+             total_failures, reset_count)
+        )
+        self.log('RemoteCache: %s' % message)
+
+        if self.debug_file:
+            self._debug(message)
+
+            if self.stats_metadata_requests > 0:
+                self._debug('Task metadata stats: %d ms average RTT on %d '
+                            'requests.' %
+                            (self.stats_metadata_total_ms /
+                             self.stats_metadata_requests,
+                             self.stats_metadata_requests))
+
+            # The upload and download stats use the same log format.
+            self._print_operation_stats('Download',
+                                        self.stats_download_requests,
+                                        self.stats_download_total_bytes,
+                                        self.stats_download_total_ms)
+            self._print_operation_stats('Upload',
+                                        self.stats_upload_requests,
+                                        self.stats_upload_total_bytes,
+                                        self.stats_upload_total_ms)
 
 # Local Variables:
 # tab-width:4

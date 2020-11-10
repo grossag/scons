@@ -58,6 +58,7 @@ import SCons.Node
 import SCons.Node.FS
 import SCons.Platform
 import SCons.Platform.virtualenv
+import SCons.RemoteCache
 import SCons.SConf
 import SCons.Script
 import SCons.Taskmaster

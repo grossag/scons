@@ -90,21 +90,21 @@ class Jobs:
         """
 
         self.job = None
-        if num > 1:
-            stack_size = explicit_stack_size
-            if stack_size is None:
-                stack_size = default_stack_size
 
-            try:
-                if ((remote_cache and remote_cache.fetch_enabled) or
-                        use_scheduler_v2):
-                    self.job = ParallelV2(taskmaster, num, stack_size,
-                                          remote_cache)
-                else:
-                    self.job = Parallel(taskmaster, num, stack_size)
-                self.num_jobs = num
-            except NameError:
-                pass
+        stack_size = explicit_stack_size
+        if stack_size is None:
+            stack_size = default_stack_size
+
+        try:
+            if ((remote_cache and remote_cache.fetch_enabled) or
+                    use_scheduler_v2):
+                self.job = ParallelV2(taskmaster, num, stack_size, remote_cache)
+            elif num > 1:
+                self.job = Parallel(taskmaster, num, stack_size)
+            self.num_jobs = num
+        except NameError:
+            pass
+
         if self.job is None:
             self.job = Serial(taskmaster)
             self.num_jobs = 1
@@ -580,8 +580,9 @@ else:
                         # being used or the task was not cacheable.
                         #
                         # Count the number of non-cacheable tasks but don't
-                        # count tasks with 1 target that is an alias, because
-                        # they are not actually run.
+                        # count tasks with 1 target that is an alias or a
+                        # directory with '.' as the path, because they are not
+                        # actually run.
                         if (len(task.targets) > 1 or
                                 not isinstance(task.targets[0],
                                                SCons.Node.Alias.Alias)):
@@ -592,6 +593,8 @@ else:
                         self.tp.put(task)
                         jobs = jobs + 1
 
+            # Instruct the remote caching layer to log information about
+            # the cache hit rate.
             cache_count = cache_hits + cache_misses + cache_suspended
             task_count = cache_count + cache_skips
             if self.remote_cache and task_count > 0:
@@ -600,17 +603,10 @@ else:
                 hit_pct = (cache_hits * 100.0 / cache_count if cache_count
                            else 0.0)
                 cacheable_pct = cache_count * 100.0 / task_count
-                SCons.Util.display(
-                    'RemoteCache: '
-                    '%2.1f percent cache hit rate on %d cacheable tasks '
-                    'with %d hits, %d misses, %d w/cache suspended. '
-                    '%2.1f percent of total tasks cacheable, due to %d/%d '
-                    'tasks marked not cacheable. '
-                    'Saw %d total failures, %d cache restarts.' %
-                    (hit_pct, cache_count, cache_hits, cache_misses,
-                     cache_suspended,
-                     cacheable_pct, cache_skips, task_count,
-                     total_failures, reset_count))
+                self.remote_cache.log_stats(
+                    hit_pct, cache_count, cache_hits, cache_misses,
+                    cache_suspended, cacheable_pct, cache_skips, task_count,
+                    total_failures, reset_count)
 
             self.tp.cleanup()
             self.taskmaster.cleanup()
