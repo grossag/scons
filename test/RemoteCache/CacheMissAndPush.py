@@ -31,6 +31,7 @@ with successful cache pushes afterwards.
 
 import os
 from RemoteCacheUtils import start_test_server
+import TestCommon
 import TestSCons
 
 test = TestSCons.TestSCons()
@@ -48,13 +49,14 @@ arguments = [
 # Populate the cache.
 test.run(arguments=arguments,
          stdout=test.wrap_stdout("""\
-cl /Fotest_main.obj /c test_main.c /nologo
+cl /Fotest_main{obj_suffix} /c test_main.c /nologo
 test_main.c
-link /nologo /OUT:main.exe test_main.obj
+link /nologo /OUT:main{exe_suffix} test_main{obj_suffix}
 RemoteCache: 0.0 percent cache hit rate on 2 cacheable tasks with 0 hits, 2 \
 misses, 0 w/cache suspended. 66.7 percent of total tasks cacheable, due to \
 1/3 tasks marked not cacheable. Saw 0 total failures, 0 cache restarts.
-"""))
+""".format(obj_suffix=TestCommon.obj_suffix,
+           exe_suffix=TestCommon.exe_suffix)))
 
 # Clean the build directory.
 test.run(arguments='-C .')
