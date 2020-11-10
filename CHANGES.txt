@@ -39,6 +39,10 @@ RELEASE  VERSION/DATE TO BE FILLED IN LATER
       hash format that SCons uses. It can also be set via SetOption('hash_format'). Supported
       values include md5, sha1, and sha256, but you can also use any other algorithm that is
       offered by your Python interpreter's hashlib package.
+    - Added support for remote caching to SCons. This feature allows for fetch and push of
+      SCons output to a Bazel remote cache server or any other similar server that supports
+      /ac/ and /cas/ GET and PUT requests using SHA-256 file names. See
+      https://github.com/buchgr/bazel-remote for more details on the server.
 
   From Joachim Kuebart:
     - Suppress missing SConscript deprecation warning if `must_exist=False`
