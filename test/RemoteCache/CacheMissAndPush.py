@@ -25,10 +25,14 @@
 __revision__ = "__FILE__ __REVISION__ __DATE__ __DEVELOPER__"
 
 """
-Tests remote cache fetch and push. In this test, cache misses are expected,
-with successful cache pushes afterwards.
+Tests remote cache push and then fetch. In this test, cache misses are
+expected for the first compilation with cache hits for the second compilation.
+This is because the first compilation is the cache producer for the second
+compilation.
 """
 
+import os
+import stat
 import sys
 
 import RemoteCacheUtils
@@ -78,6 +82,15 @@ RemoteCache: 100.0 percent cache hit rate on 2 cacheable tasks with 2 hits, \
 0 misses, 0 w/cache suspended. 66.7 percent of total tasks cacheable, due to \
 1/3 tasks marked not cacheable. Saw 0 total failures, 0 cache restarts.
 """))
+
+# Confirm that cache hits set the execute bits only for the executable.
+if os.name == 'posix':
+    object_mode = os.stat(test.workpath('test_main.o')).st_mode
+    executable_mode = os.stat(test.workpath('main')).st_mode
+    executable_bits = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+    assert object_mode & executable_bits == 0, object_mode
+    assert executable_mode & executable_bits == executable_bits, \
+        executable_mode
 
 test.pass_test()
 
