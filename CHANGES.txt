@@ -39,10 +39,18 @@ RELEASE  VERSION/DATE TO BE FILLED IN LATER
       hash format that SCons uses. It can also be set via SetOption('hash_format'). Supported
       values include md5, sha1, and sha256, but you can also use any other algorithm that is
       offered by your Python interpreter's hashlib package.
-    - Added support for remote caching to SCons. This feature allows for fetch and push of
-      SCons output to a Bazel remote cache server or any other similar server that supports
-      /ac/ and /cas/ GET and PUT requests using SHA-256 file names. See
-      https://github.com/buchgr/bazel-remote for more details on the server.
+    - Added support for remote caching. This feature allows for fetch and push of build outputs
+      to a Bazel remote cache server or any other similar server that supports /ac/ and /cas/
+      GET and PUT requests using SHA-256 file names. See https://github.com/buchgr/bazel-remote
+      for more details on the server. New parameters introduced:
+         --remote-cache-fetch-enabled: Enables fetch of build output from the server
+         --remote-cache-push-enabled: Enables push of build output to the server
+         --remote-cache-url: Required if fetch or push is enabled
+         --remote-cache-connections: Connection count (defaults to 100)
+    - Added support for a new parameter --use-scheduler-v2 that opts into a newer, more aggressive
+      parallel scanner. This scanner avoids waiting on jobs if the job queue is full and instead
+      scans for tasks. This scanner is expected to improve the performance of your build as long
+      as you don't have very large actions that cause poor scanning performance.
 
   From Joachim Kuebart:
     - Suppress missing SConscript deprecation warning if `must_exist=False`
