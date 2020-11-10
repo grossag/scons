@@ -29,13 +29,14 @@ Tests remote cache fetch with expected cache hits for a simple source file
 compilation and link.
 """
 
-from RemoteCacheUtils import start_test_server
+import RemoteCacheUtils
 import TestSCons
 
 test = TestSCons.TestSCons()
+RemoteCacheUtils.skip_test_if_no_urllib3(test)
 test.file_fixture('test_main.c')
 test.dir_fixture('CacheHit')
-server_url = start_test_server(test.workpath())
+server_url = RemoteCacheUtils.start_test_server(test.workpath())
 
 arguments = [
     '--remote-cache-fetch-enabled',

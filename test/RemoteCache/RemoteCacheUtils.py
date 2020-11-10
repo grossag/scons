@@ -34,7 +34,13 @@ import random
 import subprocess
 import sys
 
+
 def start_test_server(directory):
+    """
+    Starts a test script which pretends to be a Bazel remote cache server
+    Returns the full url to the test server, which should be passed into SCons
+    using --remote-cache-url
+    """
     host = 'localhost'
     port = str(random.randint(49152, 65535))
     process = subprocess.Popen(
@@ -48,3 +54,11 @@ def start_test_server(directory):
     atexit.register(ShutdownServer)
 
     return 'http://%s:%s' % (host, port)
+
+
+def skip_test_if_no_urllib3(test):
+    """Skips the test if urllib3 is not available"""
+    try:
+        import urllib3  # noqa: F401
+    except ImportError:
+        test.skip_test('urllib3 not found; skipping test')

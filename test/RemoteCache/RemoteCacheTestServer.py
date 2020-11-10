@@ -41,6 +41,7 @@ parser.add_argument('address', help='Address to listen on')
 parser.add_argument('port', type=int, help='Port to listen on')
 args = vars(parser.parse_args())
 
+
 class HandlerClass(http.server.SimpleHTTPRequestHandler):
     def do_PUT(self):
         path = self.translate_path(self.path)
@@ -63,5 +64,6 @@ class HandlerClass(http.server.SimpleHTTPRequestHandler):
         self.send_response(204)
         self.end_headers()
 
-with http.server.HTTPServer((args['address'], args['port']), HandlerClass) as httpd:
+with http.server.HTTPServer((args['address'], args['port']),
+                            HandlerClass) as httpd:
     httpd.serve_forever()
