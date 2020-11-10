@@ -1,9 +1,0 @@
-{
-	"outputFiles": [{
-		"path": "main.exe",
-		"digest": {
-			"hash": "c76fd0ad1be89735fe3d68ef5f6ee43af679dcc13890bef7cc6b74fb219d5ea4",
-			"sizeBytes": 94720
-		}
-	}]
-}
