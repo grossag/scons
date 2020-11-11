@@ -244,10 +244,9 @@ class RemoteCache(object):
             self.server_address, maxsize=worker_count, block=True)
         self.request_executor = ThreadPoolExecutor(max_workers=worker_count)
 
-        if self.debug_file:
-            self._debug('Remote cache server is configured as %s and max '
-                        'connection count is %d.' %
-                        (self.server_address + self.server_path, worker_count))
+        self._debug('Remote cache server is configured as %s and max '
+                    'connection count is %d.' %
+                    (self.server_address + self.server_path, worker_count))
 
     def _get_node_data_url(self, csig):
         """Retrieves the URL for the specified node."""
@@ -594,12 +593,11 @@ class RemoteCache(object):
                 try:
                     action_result = json.loads(response.data.decode('utf-8'))
                 except json.JSONDecodeError as e:
-                    print(e)
                     if self.debug_file:
                         self._debug('Cache miss due to bad JSON data in the '
                                     'action cache for task with url %s, '
-                                    'targets %s' %
-                                    (url, [str(t) for t in task.targets]))
+                                    'targets %s. Exception: %s' %
+                                    (url, [str(t) for t in task.targets], e))
                 except Exception as e:
                     self.log('Received unexpected exception %s when trying to '
                              'decode JSON data for task with url %s, targets '
@@ -826,7 +824,8 @@ class RemoteCache(object):
         Prints a debug message if --cache-debug was set.
         Caller is responsible for checking that self.debug_file is not None.
         """
-        self.debug_file.write(msg + '\n')
+        if self.debug_file:
+            self.debug_file.write(msg + '\n')
 
     def _debug_cache_result(self, hit, task, url):
         """
@@ -889,7 +888,6 @@ class RemoteCache(object):
                      format_container(getattr(t, 'ignore', [])),
                      '\n\t'.join(actions)))
 
-
     def _print_operation_stats(self, operation, requests, bytes, ms):
         """Prints statistics about the specified operation."""
         if requests > 0:
@@ -900,7 +898,6 @@ class RemoteCache(object):
                         (operation, requests, mb, ms,
                          0 if mb == 0 else float(ms) / mb,
                          0 if seconds == 0 else mb / seconds))
-
 
     def log_stats(self, hit_pct, cache_count, cache_hits, cache_misses,
                   cache_suspended, cacheable_pct, cache_skips, task_count,
