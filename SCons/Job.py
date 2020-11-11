@@ -29,7 +29,6 @@ stop, and wait on jobs.
 
 import SCons.compat
 import SCons.Node
-import SCons.Util
 
 from collections import deque
 import os
@@ -49,8 +48,6 @@ explicit_stack_size = None
 default_stack_size = 256
 
 interrupt_msg = 'Build interrupted.'
-
-display = SCons.Util.display
 
 
 class InterruptState:

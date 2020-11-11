@@ -1,3 +1,4 @@
+# MIT License
 #
 # Copyright 2020 VMware, Inc.
 #
@@ -20,8 +21,6 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-
-__revision__ = "__FILE__ __REVISION__ __DATE__ __DEVELOPER__"
 
 from hashlib import sha256
 import json
