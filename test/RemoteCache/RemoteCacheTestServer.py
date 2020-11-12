@@ -48,7 +48,7 @@ class HandlerClass(http.server.SimpleHTTPRequestHandler):
     are the only requests that the SCons remote caching code makes.
     SimpleHTTPRequestHandler automatically supports GET requests, so we only
     need to implement PUT requests. http.client has code to handle a request
-    XXX by calling the do_XXX function, so we only need to implement do_PUT.
+    XYZ by calling the do_XYZ function, so we only need to implement do_PUT.
     """
     def do_PUT(self):
         path = self.translate_path(self.path)
