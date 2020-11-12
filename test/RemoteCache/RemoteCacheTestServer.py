@@ -43,6 +43,13 @@ args = vars(parser.parse_args())
 
 
 class HandlerClass(http.server.SimpleHTTPRequestHandler):
+    """
+    Subclass of SimpleHTTPRequestHandler to handle PUT and GET requests, which
+    are the only requests that the SCons remote caching code makes.
+    SimpleHTTPRequestHandler automatically supports GET requests, so we only
+    need to implement PUT requests. http.client has code to handle a request
+    XXX by calling the do_XXX function, so we only need to implement do_PUT.
+    """
     def do_PUT(self):
         path = self.translate_path(self.path)
         dir, file = os.path.split(path)
@@ -53,6 +60,9 @@ class HandlerClass(http.server.SimpleHTTPRequestHandler):
         data = self.rfile.read(length)
 
         if os.path.basename(dir) == 'cas':
+            # For Content Addressable Storage entries, validate that the last
+            # path segment matches the sha256 of the content; return
+            # Unprocessable Entity otherwise.
             actual_sha256 = hashlib.sha256(data).hexdigest()
             if file != actual_sha256:
                 self.send_response(422)
@@ -61,6 +71,8 @@ class HandlerClass(http.server.SimpleHTTPRequestHandler):
 
         with open(path, 'wb') as f:
             f.write(data)
+
+        # No Content is a standard answer for a successful resource PUT.
         self.send_response(204)
         self.end_headers()
 
